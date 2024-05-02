@@ -3,6 +3,7 @@ package com.pluralsight;
 import java.io.*;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Scanner;
 
@@ -10,6 +11,8 @@ public class Main {
     private static final Scanner userInput = new Scanner(System.in);
     private static final String TRANSACTION_FILE = "files/Transactions.csv";
     private static final ArrayList<Transaction> transactions = new ArrayList<>();
+    private static final DateTimeFormatter dateFormat = DateTimeFormatter.ISO_DATE;
+    private static final DateTimeFormatter timeFormat = DateTimeFormatter.ofPattern("kk:mm:ss");
 
 
     public static void main(String[] args) {
@@ -82,7 +85,7 @@ public class Main {
             double amount = userInput.nextDouble();
             userInput.nextLine();
 
-            writer.println(currentDate + "|" + currentTime + "|" + vendorName + "|" + description + "|" + amount);
+            writer.println(currentDate.format(dateFormat) + "|" + currentTime.format(timeFormat) + "|" + vendorName + "|" + description + "|" + amount);
             System.out.println("Deposit successful!");
         } catch (IOException e) {
             System.out.println("Error: Failed to add deposit.");
@@ -90,12 +93,15 @@ public class Main {
     }
 
     private static void makePayment() {
-        try (PrintWriter writer = new PrintWriter(new FileWriter(TRANSACTION_FILE), true)) {
+        try (
+                FileWriter fileWriter = new FileWriter(TRANSACTION_FILE, true);
+                PrintWriter writer = new PrintWriter(fileWriter)
+                ) {
             System.out.println("-------------------------------------");
             System.out.println("Welcome to Plural payment ");
             LocalDate currentDate = LocalDate.now();
             LocalTime currentTime = LocalTime.now();
-            System.out.print("Description: ");
+            System.out.print("Enter description: ");
             String description = userInput.nextLine();
             System.out.print("Enter vendor name: ");
             String vendor = userInput.nextLine();
@@ -103,7 +109,7 @@ public class Main {
             double amount = userInput.nextDouble();
             userInput.nextLine();
 
-            writer.println(currentDate + "|" + currentTime + "|" + "|" + description + "|" + vendor + "|" + (-amount));
+            writer.println(currentDate.format(dateFormat) + "|" + currentTime.format(timeFormat) + "|" + description + "|" + vendor + "|" + (-amount));
             System.out.println("Payment successful!");
         } catch (IOException e) {
             System.out.println("Error: Failed to make payment.");
@@ -111,12 +117,22 @@ public class Main {
     }
 
     private static void displayLedger() {
+
+        ArrayList<Transaction> transactions = new ArrayList<>();
+        ArrayList<Transaction> depositTransactions = new ArrayList<>();
+        ArrayList<Transaction> paymentTransactions = new ArrayList<>();
+
         try (Scanner fileScanner = new Scanner(new File(TRANSACTION_FILE))) {
-            ArrayList<Transaction> transactions = new ArrayList<>();
+
             while (fileScanner.hasNextLine()) {
                 String line = fileScanner.nextLine();
                 Transaction transaction = Transaction.fromString(line);
                 transactions.add(transaction);
+                if (transaction.getAmount() > 0) {
+                    depositTransactions.add(transaction);
+                } else {
+                    paymentTransactions.add(transaction);
+                }
             }
 
             while (true) {
@@ -135,14 +151,24 @@ public class Main {
                     case "A":
                         System.out.println("\nAll Transactions: ");
                         for (Transaction transaction : transactions) {
-                            System.out.println(transaction.toString());
+                            System.out.println(
+                                    "Date: " + transaction.getDate() +
+                                            ", Time: " + transaction.getTime() +
+                                            ", Description: " + transaction.getDescription() +
+                                            ", Vendor: " + transaction.getVendor() +
+                                            ", Amount: " + transaction.getAmount()
+                            );
                         }
                         break;
                     case "D":
                         System.out.println("\nDeposits: ");
                         for (Transaction transaction : transactions) {
                             if (transaction.getAmount() > 0) {
-                                System.out.println(transaction.toString());
+                                System.out.println( "Date: " + transaction.getDate() +
+                                        ", Time: " + transaction.getTime() +
+                                        ", Description: " + transaction.getDescription() +
+                                        ", Vendor: " + transaction.getVendor() +
+                                        ", Amount: " + transaction.getAmount());
                             }
                         }
                         break;
@@ -150,7 +176,11 @@ public class Main {
                         System.out.println("\nPayments: ");
                         for (Transaction transaction : transactions) {
                             if (transaction.getAmount() < 0) {
-                                System.out.println(transaction.toString());
+                                System.out.println("Date: " + transaction.getDate() +
+                                        ", Time: " + transaction.getTime() +
+                                        ", Description: " + transaction.getDescription() +
+                                        ", Vendor: " + transaction.getVendor() +
+                                        ", Amount: " + transaction.getAmount());
                             }
                         }
                         break;
